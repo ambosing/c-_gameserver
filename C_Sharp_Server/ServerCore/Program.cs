@@ -2,32 +2,71 @@
 
 class Program
 {
-    static int number = 0; // Race Condition
-    static object _obj = new object();
+    class FastLock
+    {
+        public int id;
+    }
 
+    class SessionManager
+    {
+        FastLock I;
+        static object _lock = new object();
+
+        public static void TestSession()
+        {
+            lock (_lock)
+            {
+
+            }
+        }
+
+        public static void Test()
+        {
+            lock (_lock)
+            {
+                UserManager.TestUser();
+            }
+            
+        }
+    }
+
+    class UserManager
+    {
+        FastLock I;
+        static object _lock = new object();
+
+
+        public static void Test()
+        {
+            lock (_lock)
+            {
+                SessionManager.TestSession();
+            }
+        }
+
+        public static void TestUser()
+        {
+            lock (_lock)
+            {
+
+            }
+        }
+    }
+
+ 
     static void Thread_1()
     {
-        for (int i = 0; i < 100000; i++)
+        for (int i = 0; i < 10000; i++)
         {
-            // 상호 배제 Mutual Exclusive
-            // 이 안은 싱글스레드라고 가정하고 코드를 작성해도 됨
-
-            lock (_obj) // _obj = 자물쇠
-            {
-                number++;
-            }
-
+            SessionManager.Test();
         }
 
     }
     static void Thread_2()
     {
-        for (int i = 0; i < 100000; i++)
+        for (int i = 0; i < 10000; i++)
         {
-            lock (_obj) // _obj = 자물쇠
-            {
-                number--;
-            }
+            UserManager.Test();
         }
     }
 
@@ -37,10 +76,10 @@ class Program
         Task t2 = new Task(Thread_2);
 
         t1.Start();
+        Thread.Sleep(100);
         t2.Start();
 
         Task.WaitAll(t1, t2);
 
-        Console.WriteLine(number);
     }
 }
