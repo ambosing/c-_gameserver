@@ -1,41 +1,26 @@
 ﻿namespace ServerCore;
 
-class SpinLock
+class Lock
 {
-    volatile int _locked = 0; // 0 = unlock, 1 = lock
+    // 커널 단게의 bool이라고 생각해도 됨
+    ManualResetEvent _available = new ManualResetEvent(true); // true => available, false => not available
 
     public void Acquire()
     {
-        while (true)
-        {
-            //// 경합되지 않는 스택이기 때문에 if문이 제대로 동작
-            //int original = Interlocked.Exchange(ref _locked, 1); // 변경된 부분
-            //if (original == 0) break;
-
-            // CAS Compare-And-Swap
-            int expected = 0;
-            int desired = 1;
-            
-            if (Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
-                break;
-
-            // 쉬다 올게 ~ (Context Switching이 발생할 수 있음)
-            //Thread.Sleep(1); // 무조건 휴식 => 무조건 1ms 정도 쉬고 싶어요
-            //Thread.Sleep(0); // 조건부 양보 => 나보다 우선순위가 낮은 애들한테는 양보 불가 => 우선순위가 나보다 같거나 높은 쓰레드가 없으면 다시 본인한테
-            Thread.Yield(); // 관대한 양보 => 관대하게 양보할테니, 지금 실행이 가능한 쓰레드가 있으면 실행하세요 => 실행 가능한 애가 없으면 남은 시간 소진
-        }
+        _available.WaitOne(); // 입장 시도
+        _available.Reset(); // 수동으로 닫아줘야함
     }
 
     public void Release()
     {
-        _locked = 0;
+       _available.Set(); // 문을 열어준다
     }
 }
 
 class Program
 {
     static int _num = 0;
-    static SpinLock _lock = new SpinLock();
+    static Lock _lock = new Lock();
 
     static void Thread1()
     {
