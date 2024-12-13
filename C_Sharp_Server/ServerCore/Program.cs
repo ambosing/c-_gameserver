@@ -3,17 +3,18 @@
 class Lock
 {
     // 커널 단게의 bool이라고 생각해도 됨
-    ManualResetEvent _available = new ManualResetEvent(true); // true => available, false => not available
+    AutoResetEvent _available = new AutoResetEvent(true); // true => available, false => not available
 
     public void Acquire()
     {
         _available.WaitOne(); // 입장 시도
-        _available.Reset(); // 수동으로 닫아줘야함
+        // _available.Reset(); 이 포함되어 있음
+        // => bool = false와 같음
     }
 
     public void Release()
     {
-       _available.Set(); // 문을 열어준다
+       _available.Set(); // bool = true
     }
 }
 
