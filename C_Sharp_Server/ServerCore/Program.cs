@@ -1,85 +1,66 @@
 ﻿namespace ServerCore;
 
+class SpinLock
+{
+    volatile int _locked = 0; // 0 = unlock, 1 = lock
+
+    public void Acquire()
+    {
+        while (true)
+        {
+            //// 경합되지 않는 스택이기 때문에 if문이 제대로 동작
+            //int original = Interlocked.Exchange(ref _locked, 1); // 변경된 부분
+            //if (original == 0) break;
+
+            // CAS Compare-And-Swap
+            int expected = 0;
+            int desired = 1;
+            
+            if (Interlocked.CompareExchange(ref _locked, desired, expected) == expected)
+                break;
+        }
+    }
+
+    public void Release()
+    {
+        _locked = 0;
+    }
+}
+
 class Program
 {
-    class FastLock
+    static int _num = 0;
+    static SpinLock _lock = new SpinLock();
+
+    static void Thread1()
     {
-        public int id;
-    }
-
-    class SessionManager
-    {
-        FastLock I;
-        static object _lock = new object();
-
-        public static void TestSession()
+        for (int i = 0; i < 100000; i++)
         {
-            lock (_lock)
-            {
-
-            }
-        }
-
-        public static void Test()
-        {
-            lock (_lock)
-            {
-                UserManager.TestUser();
-            }
-            
+            _lock.Acquire();
+            _num++;
+            _lock.Release();
         }
     }
-
-    class UserManager
+    static void Thread2()
     {
-        FastLock I;
-        static object _lock = new object();
-
-
-        public static void Test()
+        for (int i = 0; i < 100000; i++)
         {
-            lock (_lock)
-            {
-                SessionManager.TestSession();
-            }
-        }
-
-        public static void TestUser()
-        {
-            lock (_lock)
-            {
-
-            }
-        }
-    }
-
- 
-    static void Thread_1()
-    {
-        for (int i = 0; i < 10000; i++)
-        {
-            SessionManager.Test();
-        }
-
-    }
-    static void Thread_2()
-    {
-        for (int i = 0; i < 10000; i++)
-        {
-            UserManager.Test();
+            _lock.Acquire();
+            _num--;
+            _lock.Release();
         }
     }
 
     static void Main(string[] args)
     {
-        Task t1 = new Task(Thread_1);
-        Task t2 = new Task(Thread_2);
+        Task t1 = new Task(Thread1);
+        Task t2 = new Task(Thread2);
 
         t1.Start();
-        Thread.Sleep(100);
         t2.Start();
 
         Task.WaitAll(t1, t2);
 
+        Console.WriteLine(_num);
     }
 }
