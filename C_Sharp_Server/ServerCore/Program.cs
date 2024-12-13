@@ -3,38 +3,22 @@
 
 class Program
 {
-    static int _num = 0;
-    static Mutex _lock = new Mutex();
+    // 내부적으로 Monitor 사용
+    static object _lock = new object();
+    static SpinLock _lock2 = new SpinLock(); // SpinLock을 하다가 너무 오래걸리면 양보
+    static Mutex _lcok3 = new Mutex(); // 커널에게 명령어 요청해야 해서 느림
 
-    static void Thread1()
-    {
-        for (int i = 0; i < 100000; i++)
-        {
-            _lock.WaitOne();
-            _num++;
-            _lock.ReleaseMutex();
-        }
-    }
-    static void Thread2()
-    {
-        for (int i = 0; i < 100000; i++)
-        {
-            _lock.WaitOne();
-            _num--;
-            _lock.ReleaseMutex();
-        }
-    }
 
     static void Main(string[] args)
     {
-        Task t1 = new Task(Thread1);
-        Task t2 = new Task(Thread2);
-
-        t1.Start();
-        t2.Start();
-
-        Task.WaitAll(t1, t2);
-
-        Console.WriteLine(_num);
+        bool lockTaken = false;
+        try
+        {
+            _lock2.Enter(ref lockTaken);
+        }
+        finally
+        {
+            if (lockTaken) _lock2.Exit();
+        }
     }
 }
