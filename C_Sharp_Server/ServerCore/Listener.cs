@@ -25,6 +25,7 @@ namespace ServerCore
             // backlog : 최대 대기수
             _listenSocket.Listen(10);
 
+
             SocketAsyncEventArgs args = new SocketAsyncEventArgs();
             args.Completed += new EventHandler<SocketAsyncEventArgs>(OnAcceptCompleted);
             RegisterAccept(args);
